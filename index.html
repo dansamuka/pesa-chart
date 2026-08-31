@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Pesa Chart — Kenyan Money, Squared</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#EFEAE0;
+    --paper-2:#E5DECE;
+    --ink:#211D18;
+    --ink-soft:#5B564C;
+    --t1:#C17817; --t1-tint:#F4E3C8;
+    --t2:#276B63; --t2-tint:#D9E8E4;
+    --t3:#3A4A87; --t3-tint:#DEE1EE;
+    --t4:#8B2E3B; --t4-tint:#EEDBDD;
+    --t5-bg:#1F1B16; --t5:#C9A227; --t5-tint:#E8D9A5;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'IBM Plex Sans', sans-serif;
+    line-height:1.5;
+  }
+  h1,h2,h3{ font-family:'Fraunces', serif; font-weight:600; margin:0; }
+  .num{ font-family:'IBM Plex Mono', monospace; font-variant-numeric:tabular-nums; }
+
+  /* ---- Header ---- */
+  header{
+    max-width:760px;
+    margin:0 auto;
+    padding:76px 24px 40px;
+  }
+  header .kicker{
+    color:var(--ink-soft);
+    font-size:15px;
+    margin-bottom:14px;
+  }
+  header h1{
+    font-size:clamp(36px, 6vw, 58px);
+    line-height:1.05;
+    letter-spacing:-0.01em;
+  }
+  header h1 em{ font-style:italic; color:var(--t1); }
+  header p{
+    font-size:17px;
+    color:var(--ink-soft);
+    max-width:62ch;
+    margin-top:18px;
+  }
+  header .origin{
+    margin-top:22px;
+    font-size:14px;
+    color:var(--ink-soft);
+    border-left:2px solid var(--ink);
+    padding-left:14px;
+  }
+  header .origin a{ color:var(--ink); }
+
+  /* ---- Scale rail (sticky nav) ---- */
+  .rail{
+    position:sticky;
+    top:0;
+    z-index:20;
+    background:var(--paper);
+    border-bottom:1px solid rgba(33,29,24,0.15);
+    backdrop-filter:blur(4px);
+  }
+  .rail-inner{
+    max-width:920px;
+    margin:0 auto;
+    display:flex;
+    overflow-x:auto;
+    scrollbar-width:none;
+  }
+  .rail-inner::-webkit-scrollbar{ display:none; }
+  .rail a{
+    flex:1 0 auto;
+    text-decoration:none;
+    color:var(--ink);
+    font-size:13px;
+    font-family:'IBM Plex Mono', monospace;
+    padding:12px 16px;
+    white-space:nowrap;
+    border-bottom:3px solid transparent;
+    opacity:0.55;
+    transition:opacity .15s;
+  }
+  .rail a:hover{ opacity:1; }
+  .rail a[data-t="1"]{ border-color:var(--t1); }
+  .rail a[data-t="2"]{ border-color:var(--t2); }
+  .rail a[data-t="3"]{ border-color:var(--t3); }
+  .rail a[data-t="4"]{ border-color:var(--t4); }
+  .rail a[data-t="5"]{ border-color:var(--t5); }
+
+  /* ---- Tier sections ---- */
+  .tier{
+    padding:64px 24px 76px;
+    border-bottom:1px solid rgba(33,29,24,0.12);
+  }
+  .tier-inner{ max-width:920px; margin:0 auto; }
+  .tier-head{
+    display:flex;
+    align-items:baseline;
+    gap:18px;
+    flex-wrap:wrap;
+    margin-bottom:8px;
+  }
+  .tier-head .scale{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:14px;
+    padding:3px 10px;
+    border-radius:3px;
+    color:#fff;
+  }
+  .tier-head h2{ font-size:clamp(24px,3.4vw,32px); }
+  .tier-sub{ color:var(--ink-soft); font-size:15px; margin:8px 0 40px; max-width:64ch; }
+  .tier-sub .unit{ font-weight:600; }
+
+  .t1 .scale{ background:var(--t1); } .t1 .tier-sub .unit{ color:var(--t1); }
+  .t2 .scale{ background:var(--t2); } .t2 .tier-sub .unit{ color:var(--t2); }
+  .t3 .scale{ background:var(--t3); } .t3 .tier-sub .unit{ color:var(--t3); }
+  .t4 .scale{ background:var(--t4); } .t4 .tier-sub .unit{ color:var(--t4); }
+  .t5 .scale{ background:var(--t5); color:var(--t5-bg); } .t5 .tier-sub .unit{ color:var(--t5); }
+  .t5{ background:var(--t5-bg); color:var(--paper); }
+  .t5 .tier-sub{ color:#A69F8E; }
+  .t5 h2, .t5 h3{ color:var(--paper); }
+
+  /* ---- Category blocks ---- */
+  .groups{ display:flex; flex-direction:column; gap:34px; }
+  .group{ display:grid; grid-template-columns:230px 1fr; gap:20px; align-items:start; }
+  @media (max-width:640px){ .group{ grid-template-columns:1fr; } }
+  .group-label h3{ font-size:17px; line-height:1.3; }
+  .group-value{ font-size:22px; margin-top:4px; }
+  .group-source{ font-size:12.5px; color:var(--ink-soft); margin-top:6px; }
+  .t5 .group-source{ color:#8C8577; }
+
+  .squares{
+    display:flex;
+    flex-wrap:wrap;
+    gap:2px;
+    align-content:flex-start;
+    max-width:100%;
+  }
+  .sq{
+    width:9px; height:9px;
+    border-radius:1px;
+    opacity:0.92;
+  }
+  .t1 .sq{ background:var(--t1); }
+  .t2 .sq{ background:var(--t2); }
+  .t3 .sq{ background:var(--t3); }
+  .t4 .sq{ background:var(--t4); }
+  .t5 .sq{ background:var(--t5); }
+
+  .group[data-big="1"] .sq{ width:6px; height:6px; }
+
+  /* tooltip */
+  .squares{ position:relative; }
+  .tip{
+    position:absolute;
+    display:none;
+    background:var(--ink);
+    color:var(--paper);
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12px;
+    padding:5px 8px;
+    border-radius:4px;
+    white-space:nowrap;
+    pointer-events:none;
+    transform:translate(-50%,-130%);
+    z-index:5;
+  }
+
+  /* ---- Footer ---- */
+  footer{
+    max-width:760px;
+    margin:0 auto;
+    padding:56px 24px 100px;
+    color:var(--ink-soft);
+    font-size:14px;
+  }
+  footer h3{ color:var(--ink); font-size:18px; margin-bottom:14px; }
+  footer ul{ padding-left:18px; }
+  footer li{ margin-bottom:6px; }
+  footer .fx{ margin-top:28px; padding-top:20px; border-top:1px solid rgba(33,29,24,0.15); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="kicker">A Kenyan re-scaling of xkcd #980 · sourced, August 2026</div>
+  <h1>The <em>Pesa</em> Chart</h1>
+  <p>Randall Munroe's "Money" chart put a boda-boda fare and the U.S. federal budget on the same page, one square at a time. This is the same idea, rebuilt from scratch in shillings — five tiers, each one thousand times bigger than the last, from a plate of ugali to the national debt.</p>
+  <div class="origin">Reference: <a href="https://xkcd.com/980/huge/" target="_blank" rel="noopener">xkcd.com/980</a> — Randall Munroe, 2011. Every figure below is Kenyan and current to 2025/26; none of the original's numbers are reused.</div>
+</header>
+
+<nav class="rail">
+  <div class="rail-inner">
+    <a href="#t1" data-t="1">KES 1 — Everyday prices</a>
+    <a href="#t2" data-t="2">KES 1,000 — Personal finances</a>
+    <a href="#t3" data-t="3">KES 1,000,000 — Mid-scale wealth</a>
+    <a href="#t4" data-t="4">KES 1 billion — Companies &amp; counties</a>
+    <a href="#t5" data-t="5">KES 1 trillion — The nation</a>
+  </div>
+</nav>
+
+<section class="tier t1" id="t1">
+  <div class="tier-inner">
+    <div class="tier-head"><span class="scale">10⁰ – 10³</span><h2>Everyday prices</h2></div>
+    <p class="tier-sub">Each square is <span class="unit">one shilling</span>. This is the tier of transport, groceries, and small change — what most transactions in Kenya actually look like.</p>
+    <div class="groups" id="groups-1"></div>
+  </div>
+</section>
+
+<section class="tier t2" id="t2">
+  <div class="tier-inner">
+    <div class="tier-head"><span class="scale">10³ – 10⁶</span><h2>Personal finances</h2></div>
+    <p class="tier-sub">Each square is <span class="unit">one thousand shillings (KES 1,000)</span>. Monthly wages, rent, and the gap between the statutory minimum and what people actually earn.</p>
+    <div class="groups" id="groups-2"></div>
+  </div>
+</section>
+
+<section class="tier t3" id="t3">
+  <div class="tier-inner">
+    <div class="tier-head"><span class="scale">10⁶ – 10⁹</span><h2>Mid-scale wealth</h2></div>
+    <p class="tier-sub">Each square is <span class="unit">one million shillings (KES 1M)</span>. Annual pay for the top of the salary ladder, a decent car, and what an average Kenyan versus an average Nairobian produces in a year.</p>
+    <div class="groups" id="groups-3"></div>
+  </div>
+</section>
+
+<section class="tier t4" id="t4">
+  <div class="tier-inner">
+    <div class="tier-head"><span class="scale">10⁹ – 10¹²</span><h2>Companies &amp; counties</h2></div>
+    <p class="tier-sub">Each square is <span class="unit">one billion shillings (KES 1B)</span>. Where personal wealth stops and institutional money starts: listed companies, county governments, and Kenya's wealthiest individuals.</p>
+    <div class="groups" id="groups-4"></div>
+  </div>
+</section>
+
+<section class="tier t5" id="t5">
+  <div class="tier-inner">
+    <div class="tier-head"><span class="scale">10¹² +</span><h2>The nation</h2></div>
+    <p class="tier-sub">Each square is <span class="unit">one trillion shillings (KES 1T)</span>. The budget, the debt, and the entire economy those first four tiers add up into.</p>
+    <div class="groups" id="groups-5"></div>
+  </div>
+</section>
+
+<footer>
+  <h3>Sources &amp; method</h3>
+  <ul>
+    <li>Each tier's unit is 1,000× the tier before it — the same nested-scale structure as the original xkcd chart, re-based for the shilling.</li>
+    <li>Square counts are the real figure divided by the tier's unit, rounded to one decimal place. Nothing is scaled for visual effect.</li>
+    <li>National budget, revenue, and county-transfer figures: National Treasury Budget Policy Statement / Budget Statement FY2025/26; KPMG and Grant Thornton budget bulletins (June 2025).</li>
+    <li>GDP: Kenya National Bureau of Statistics, Economic Survey 2026 (KES 17.58 trillion, 2025 nominal).</li>
+    <li>Public debt: National Treasury Annual Public Debt Management Report 2024/25; Kenyan Wallstreet debt coverage (Jan 2026 bulletin).</li>
+    <li>Corporate results: Safaricom PLC FY2026 audited results, EABL FY2026 full-year results, and KCB Group Plc FY2025 audited results.</li>
+    <li>Wages: Regulation of Wages (General) (Amendment) Order 2024; KNBS-sourced average/median earnings (2024/25).</li>
+    <li>Everyday prices: KNBS Consumer Price Index basket; EPRA fuel pricing; retail survey reporting, July 2025.</li>
+    <li>Net worth: Henley &amp; Partners / New World Wealth Africa Wealth Report 2025; independent Kenyan business-press estimates — flagged as modelled estimates, not audited figures.</li>
+    <li>Nairobi County budget: Nairobi City County Fiscal Strategy Paper and FY2025/26 budget estimates.</li>
+  </ul>
+  <p class="fx">USD figures converted at approximately KES 129 per USD (mid-2025 average rate). Some figures are financial-year totals (ending March or June) rather than calendar-year; each label notes the period where it matters. Net-worth and informal-market prices are estimates and vary by source — treat them as orientation, not accounting.</p>
+</footer>
+
+<script>
+const T = [
+  { id:1, cls:'t1', unit:1,
+    groups:[
+      { label:'Boda boda, short hop', value:150, source:'Typical in-town fare, 2026 travel guides' },
+      { label:'Matatu, Nairobi CBD short trip', value:70, source:'KES 30–100 range, city routes, 2026' },
+      { label:'1 litre of milk', value:116, source:'Retail price, Dec 2024' },
+      { label:'1 litre of super petrol', value:198, source:'EPRA pump price, Apr 2026' },
+      { label:'2 kg packet of unga (maize flour)', value:170, source:'KNBS/AFA retail price, Jul 2025' },
+      { label:'1 litre cooking oil', value:280, source:'Nairobi household grocery survey, 2025' },
+      { label:'2 kg rice', value:280, source:'Nairobi household grocery survey, 2025' },
+      { label:'Tray of 30 eggs', value:380, source:'Nairobi household grocery survey, 2025' },
+      { label:'1 kg beef', value:750, source:'Nairobi household grocery survey, 2025 (range 600–900)' },
+    ]},
+  { id:2, cls:'t2', unit:1000,
+    groups:[
+      { label:'Rural minimum wage, per month', value:7997, source:'Regulation of Wages Order, Nov 2024' },
+      { label:'Weekly groceries, family of four', value:3230, source:'Nairobi household grocery survey, 2025' },
+      { label:'Urban minimum wage, per month', value:16114, source:'Regulation of Wages Order, eff. Nov 2024' },
+      { label:'Median monthly income (all workers)', value:20300, source:'KNBS-derived estimate, 2024/25' },
+      { label:'Nairobi rent, one bedroom', value:20000, source:'Typical range KES 15,000–25,000/month' },
+      { label:'Private security guard minimum wage', value:30000, source:'PSRA / Employment Court ruling, Feb 2025' },
+      { label:'Average modern-sector monthly earnings (2025)', value:82350, source:'KNBS Economic Survey 2026 (KES 988.2k annual average)' },
+      { label:'Sales Director, monthly pay (top of range)', value:300000, source:'2026 corporate salary benchmarks' },
+      { label:'CEO, monthly pay (top of range)', value:350000, source:'2026 corporate salary benchmarks' },
+      { label:'MP gross monthly pay', value:739600, source:'SRC gazette notice, FY2024/25' },
+    ]},
+  { id:3, cls:'t3', unit:1000000,
+    groups:[
+      { label:'GDP per capita, Kenya (national average)', value:355000, source:'IMF/Worldometer, 2026 nominal estimate' },
+      { label:'GDP per capita, Nairobi County', value:850000, source:'Gross County Product, 2024' },
+      { label:'New imported Toyota Vitz (2025 model)', value:2200000, source:'Dealer listings, 2025' },
+      { label:'CEO gross annual pay (mid-range)', value:3600000, source:'2026 corporate salary benchmarks' },
+      { label:'MP gross annual pay', value:8875000, source:'SRC gazette notice, FY2024/25' },
+    ]},
+  { id:4, cls:'t4', unit:1000000000,
+    groups:[
+      { label:"EABL, profit after tax (FY2026)", value:18200000000, source:'EABL FY2026 full-year results, Aug 2026' },
+      { label:'Nairobi City County, full annual budget', value:46900000000, source:'Nairobi County budget, FY2025/26' },
+      { label:"Bhimji Depar Shah's estimated net worth", value:54200000000, source:'Africa Wealth Report 2025 ($420M)' },
+      { label:'Kenya\u2019s richest individual, estimated net worth', value:101900000000, source:'Business-press estimate ($790M) — disputed, treat as rough order of magnitude' },
+      { label:'Safaricom Group, net income attributable to equity holders (FY2026)', value:95608600000, source:'Safaricom FY2026 audited results, May 2026' },
+      { label:'KCB Group, full-year net profit (FY2025)', value:68400000000, source:'KCB Group FY2025 results' },
+      { label:'EABL, full-year net revenue (FY2026)', value:146000000000, source:'EABL FY2026 full-year results, Aug 2026' },
+      { label:'KCB Group, full-year total revenue (FY2025)', value:211800000000, source:'KCB Group FY2025 results' },
+      { label:'Safaricom Group, full-year total revenue (FY2026)', value:427559100000, source:'Safaricom FY2026 audited results, May 2026' },
+      { label:'All 47 counties, total annual transfers', value:474900000000, source:'Division of Revenue, FY2025/26 BPS' },
+    ]},
+  { id:5, cls:'t5', unit:1000000000000,
+    groups:[
+      { label:'National revenue target, FY2025/26', value:3320000000000, source:'National Treasury Budget Statement, Jun 2025' },
+      { label:'External public debt (national)', value:5506990000000, source:'National Treasury Public Debt Bulletin, Jan 2026' },
+      { label:'Domestic public debt (national)', value:6889540000000, source:'National Treasury Public Debt Bulletin, Jan 2026' },
+      { label:'National expenditure, FY2025/26', value:4290000000000, source:'National Treasury Budget Statement, Jun 2025' },
+      { label:'Total public and publicly guaranteed debt', value:12396530000000, source:'National Treasury Public Debt Bulletin, Jan 2026' },
+      { label:"Kenya's GDP, nominal (2025)", value:17577600000000, source:'KNBS Economic Survey 2026' },
+    ]},
+];
+
+function fmtKES(v){
+  if (v >= 1e12) return 'KES ' + (v/1e12).toFixed(2) + ' trillion';
+  if (v >= 1e9) return 'KES ' + (v/1e9).toFixed(1) + ' billion';
+  if (v >= 1e6) return 'KES ' + (v/1e6).toFixed(2) + ' million';
+  return 'KES ' + v.toLocaleString();
+}
+
+T.forEach(tier => {
+  const container = document.getElementById('groups-' + tier.id);
+  tier.groups
+    .sort((a,b)=>a.value-b.value)
+    .forEach(g => {
+      const count = g.value / tier.unit;
+      const div = document.createElement('div');
+      div.className = 'group';
+      if (count > 120) div.setAttribute('data-big','1');
+
+      const label = document.createElement('div');
+      label.className = 'group-label';
+      label.innerHTML = `<h3>${g.label}</h3>
+        <div class="group-value num">${fmtKES(g.value)}</div>
+        <div class="group-source">${g.source}</div>`;
+
+      const squaresWrap = document.createElement('div');
+      squaresWrap.className = 'squares';
+      squaresWrap.setAttribute('role', 'img');
+      squaresWrap.setAttribute('aria-label', `${g.label}: ${fmtKES(g.value)}; ${count.toFixed(1)} square units at ${fmtKES(tier.unit)} each`);
+
+      const wholeSquares = Math.floor(count);
+      const remainder = count - wholeSquares;
+      for (let i=0; i<wholeSquares; i++){
+        const sq = document.createElement('div');
+        sq.className = 'sq';
+        squaresWrap.appendChild(sq);
+      }
+      if (remainder > 0.001){
+        const sq = document.createElement('div');
+        sq.className = 'sq';
+        sq.style.clipPath = `inset(0 ${(1 - remainder) * 100}% 0 0)`;
+        sq.setAttribute('aria-hidden', 'true');
+        squaresWrap.appendChild(sq);
+      }
+
+      const tip = document.createElement('div');
+      tip.className = 'tip';
+      tip.textContent = `${count.toFixed(1)} × ${fmtKES(tier.unit)} squares`;
+      squaresWrap.appendChild(tip);
+
+      squaresWrap.addEventListener('mousemove', (e) => {
+        const rect = squaresWrap.getBoundingClientRect();
+        tip.style.left = (e.clientX - rect.left) + 'px';
+        tip.style.top = (e.clientY - rect.top) + 'px';
+        tip.style.display = 'block';
+      });
+      squaresWrap.addEventListener('mouseleave', () => tip.style.display = 'none');
+
+      div.appendChild(label);
+      div.appendChild(squaresWrap);
+      container.appendChild(div);
+    });
+});
+</script>
+</body>
+</html>
