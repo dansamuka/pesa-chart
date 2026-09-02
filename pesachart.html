@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>PESA — a Kenyan chart of money, at true scale</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=Caveat:wght@500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#efe7d3; --card:#faf5e7; --ink:#241e12; --red:#b3272d;
+  --green:#1e6b41; --ochre:#8a6d1f; --faint:rgba(36,30,18,.55);
+}
+*{box-sizing:border-box; margin:0; padding:0;}
+html,body{height:100%; overflow:hidden; touch-action:none;}
+body{
+  background:var(--paper); color:var(--ink);
+  font-family:"Bricolage Grotesque", "Trebuchet MS", sans-serif;
+  -webkit-user-select:none; user-select:none;
+}
+svg#chart{position:fixed; inset:0; width:100%; height:100%; display:block; cursor:grab; touch-action:none;}
+svg#chart:active{cursor:grabbing;}
+#world *{vector-effect:non-scaling-stroke;}
+#labels{position:fixed; inset:0; overflow:hidden; pointer-events:none; z-index:10;}
+.lb{position:absolute; left:0; top:0; width:max-content; max-width:250px; text-align:center; transition:opacity .15s linear; will-change:transform;}
+.lb-name{font-size:13.5px; font-weight:800; line-height:1.15;}
+.lb-name::before{content:""; display:inline-block; width:8px; height:8px; border-radius:50%; border:1.7px solid var(--ink); margin-right:6px; vertical-align:1px;}
+.lb.c-b .lb-name::before{border-color:var(--green);}
+.lb.c-s .lb-name::before{border-color:var(--red);}
+.lb.c-w .lb-name::before{border-color:var(--ochre);}
+.lb-val{font-size:11.5px; font-weight:600; opacity:.72; margin-top:1px; font-variant-numeric:tabular-nums;}
+.lb-note{font-family:Caveat, cursive; font-size:17px; line-height:1.05; margin-top:3px; opacity:0; transition:opacity .25s;}
+.lb.shownote .lb-note{opacity:.88;}
+.lb.c-b .lb-note{color:var(--green);}
+.lb.c-s .lb-note{color:var(--red);}
+.lb.c-w .lb-note{color:var(--ochre);}
+.sketch{background:var(--card); border:1.6px solid var(--ink); padding:12px 16px; border-radius:255px 18px 225px 18px/18px 225px 18px 255px; box-shadow:2px 3px 0 rgba(36,30,18,.14);}
+#brand{position:fixed; top:16px; left:16px; z-index:20; max-width:300px;}
+#brand h1{font-size:33px; font-weight:800; letter-spacing:.02em; line-height:1;}
+#brand .flag{display:flex; gap:3px; margin:6px 0 8px;}
+#brand .flag span{height:4px; border-radius:2px;}
+#brand .flag .k{width:20px; background:var(--ink);}
+#brand .flag .r{width:14px; background:var(--red);}
+#brand .flag .g{width:26px; background:var(--green);}
+#brand .sub{font-size:12.5px; font-weight:600; line-height:1.3;}
+#brand .swa{font-family:Caveat, cursive; font-size:17px; color:#5d4715; margin-top:2px;}
+#brand .hint{font-size:10.5px; opacity:.62; margin-top:7px; letter-spacing:.02em;}
+#ctl{position:fixed; top:16px; right:16px; z-index:20; display:flex; flex-direction:column; gap:8px;}
+#ctl button{width:40px; height:40px; background:var(--card); border:1.6px solid var(--ink); border-radius:10px 4px 12px 4px; cursor:pointer; display:grid; place-items:center; box-shadow:2px 2px 0 rgba(36,30,18,.15); transition:transform .12s, background .12s;}
+#ctl button:hover{background:var(--ink); transform:translateY(-1px);}
+#ctl button:hover svg{stroke:var(--card); fill:var(--card);}
+#ctl button svg{stroke:var(--ink); fill:none; stroke-width:2; stroke-linecap:round; transition:.12s;}
+#legend{position:fixed; right:16px; bottom:16px; z-index:20; width:225px; font-size:11px;}
+#legend h2{font-size:10px; letter-spacing:.22em; margin-bottom:6px;}
+#legend .row{display:flex; align-items:center; gap:7px; margin:3px 0; font-weight:600;}
+#legend .dot{width:10px; height:10px; border-radius:50%; border:2px solid var(--ink); flex:none;}
+#legend .dot.b{border-color:var(--green);} #legend .dot.s{border-color:var(--red);} #legend .dot.w{border-color:var(--ochre);}
+#legend .fine{margin-top:7px; font-size:10px; opacity:.62; line-height:1.4;}
+#tier{position:fixed; top:14px; left:50%; transform:translateX(-50%); z-index:15; text-align:center; pointer-events:none; transition:opacity .17s;}
+#tier-name{font-size:15px; font-weight:800; letter-spacing:.18em;}
+#tier-name::after{content:""; display:block; width:46px; height:3px; background:var(--red); margin:4px auto 0; border-radius:2px;}
+#tier-sub{font-size:10.5px; opacity:.6; margin-top:3px; letter-spacing:.06em;}
+#rail{position:fixed; right:18px; top:50%; transform:translateY(-50%); z-index:20;}
+#rail-cap{font-size:9px; letter-spacing:.25em; opacity:.55; text-align:right; margin-bottom:4px; padding-right:2px;}
+#rail-track{position:relative; width:64px; height:44vh; cursor:pointer; touch-action:none;}
+#rail-track::before{content:""; position:absolute; right:7px; top:0; bottom:0; width:2px; background:var(--ink); opacity:.22;}
+#rail-track .tick{position:absolute; right:13px; transform:translateY(-50%); font-size:9px; opacity:.55; font-weight:600;}
+#rail-track .tick::after{content:""; position:absolute; right:-7px; top:50%; width:5px; height:1.5px; background:var(--ink); opacity:.6;}
+#rail-marker{position:absolute; right:10px; width:0; height:0; transform:translateY(-50%); border:5px solid transparent; border-left:8px solid var(--red); pointer-events:none;}
+#scalebar{position:fixed; left:16px; bottom:16px; z-index:20; padding:9px 14px 10px;}
+#sb-lab{font-size:12px; font-weight:800; text-align:center; font-variant-numeric:tabular-nums;}
+#sb-bar{width:140px; height:0; border-bottom:2px solid var(--ink); margin:4px auto 3px; position:relative;}
+#sb-bar::before,#sb-bar::after{content:""; position:absolute; bottom:0; width:2px; height:8px; background:var(--ink);}
+#sb-bar::before{left:0;} #sb-bar::after{right:0;}
+#sb-mag{font-size:10px; opacity:.62; text-align:center; font-variant-numeric:tabular-nums;}
+#sb-mag sup{font-size:8px;}
+#tourcard{position:fixed; bottom:18px; left:50%; transform:translateX(-50%); z-index:30; width:min(560px, 92vw); display:none; cursor:pointer; padding:13px 52px 12px 18px;}
+#tourcard.on{display:block;}
+#tourcard .tc-meta{display:flex; gap:12px; font-size:10.5px; font-weight:800; letter-spacing:.08em; opacity:.6;}
+#tc-name{font-size:17px; font-weight:800; margin-top:2px;}
+#tc-val{font-size:12px; font-weight:600; opacity:.75;}
+#tc-note{font-family:Caveat, cursive; font-size:19px; color:#5d4715; margin-top:2px; line-height:1.1;}
+#tc-hint{font-size:9.5px; opacity:.5; margin-top:6px; letter-spacing:.04em;}
+#tc-stop{position:absolute; right:12px; top:50%; transform:translateY(-50%); width:32px; height:32px; background:var(--card); border:1.6px solid var(--ink); border-radius:8px 3px 8px 3px; cursor:pointer; display:grid; place-items:center;}
+#tc-stop:hover{background:var(--red);} #tc-stop svg{fill:var(--ink); stroke:none;} #tc-stop:hover svg{fill:var(--card);}
+#toast{position:fixed; bottom:88px; left:50%; transform:translateX(-50%) translateY(8px); z-index:40; background:var(--ink); color:var(--card); font-size:12.5px; font-weight:600; padding:9px 16px; border-radius:225px 14px 225px 14px/14px 225px 14px 225px; opacity:0; pointer-events:none; transition:opacity .3s, transform .3s; max-width:88vw; text-align:center;}
+#toast.on{opacity:1; transform:translateX(-50%) translateY(0);}
+#intro{position:fixed; inset:0; z-index:50; display:none; place-items:center; background:rgba(239,231,211,.72); backdrop-filter:blur(3px);}
+#intro.on{display:grid;}
+#intro-card{width:min(540px, 92vw); max-height:88vh; overflow:auto; padding:26px 30px; text-align:center;}
+#intro-card .coin{margin:0 auto 6px;}
+#intro-card h2{font-size:30px; font-weight:800; letter-spacing:.01em;}
+#intro-card h2 span{color:var(--red);}
+#intro-card p{font-size:13.5px; line-height:1.5; margin:10px 0 0; font-weight:600;}
+#intro-card p b{font-weight:800;}
+#intro-card .btns{display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin-top:18px;}
+#intro-card .btns button{font-family:inherit; font-size:13px; font-weight:800; cursor:pointer; padding:11px 18px; border:1.6px solid var(--ink); border-radius:225px 14px 225px 14px/14px 225px 14px 225px; transition:transform .12s, background .12s, color .12s; display:flex; align-items:center; gap:8px;}
+#intro-card .btns button svg{stroke:currentColor; fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round;}
+#intro-card .btns .primary{background:var(--ink); color:var(--card);}
+#intro-card .btns .primary:hover{background:var(--red); transform:translateY(-1px);}
+#intro-card .btns .ghost{background:var(--card); color:var(--ink);}
+#intro-card .btns .ghost:hover{transform:translateY(-1px); background:#fff9ea;}
+#intro-card .fine{font-size:10.5px; opacity:.6; margin-top:16px; line-height:1.45;}
+#grain{position:fixed; inset:0; z-index:60; pointer-events:none; mix-blend-mode:multiply; opacity:.55; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.055'/%3E%3C/svg%3E");}
+@media (max-width:720px){
+  #brand{max-width:210px; padding:9px 12px;} #brand h1{font-size:24px;} #brand .swa{display:none;} #legend{display:none;}
+  #rail{right:9px;} #rail-track{height:32vh; width:52px;} #ctl button{width:35px; height:35px;}
+  .lb-name{font-size:11.5px;} .lb-val{font-size:10px;} .lb-note{font-size:14.5px;}
+  #tier-name{font-size:12px; letter-spacing:.12em;} #scalebar{padding:7px 10px 8px;} #sb-bar{width:100px;}
+}
+</style>
+</head>
+<body>
+<svg id="chart" xmlns="http://www.w3.org/2000/svg"><g id="world"><g id="gbg"></g><g id="gmain"></g></g></svg>
+<div id="labels"></div>
+<header id="brand" class="sketch">
+  <h1>PESA</h1><div class="flag"><span class="k"></span><span class="r"></span><span class="g"></span></div>
+  <div class="sub">A chart of Kenyan money, drawn to true scale.</div>
+  <div class="swa">kutoka shilingi moja hadi afya ya dunia — from one shilling to everything on Earth.</div>
+  <div class="hint">scroll = zoom &nbsp;·&nbsp; drag = wander &nbsp;·&nbsp; double-click = dive</div>
+</header>
+<div id="ctl">
+  <button id="bIn" title="Zoom in" aria-label="Zoom in"><svg width="18" height="18" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
+  <button id="bOut" title="Zoom out" aria-label="Zoom out"><svg width="18" height="18" viewBox="0 0 24 24"><path d="M5 12h14"/></svg></button>
+  <button id="bHome" title="Back to the shilling" aria-label="Back to the shilling"><svg width="20" height="20" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/></svg></button>
+  <button id="bTour" title="Take the safari tour" aria-label="Take the safari tour"><svg width="18" height="18" viewBox="0 0 24 24"><path d="M8 5.5l11 6.5-11 6.5z"/></svg></button>
+</div>
+<div id="legend" class="sketch">
+  <h2>HOW TO READ</h2>
+  <div class="row"><span class="dot"></span> binafsi — personal &amp; daily life</div>
+  <div class="row"><span class="dot b"></span> biashara — business</div>
+  <div class="row"><span class="dot s"></span> serikali — state &amp; public</div>
+  <div class="row"><span class="dot w"></span> dunia — the world</div>
+  <div class="fine">Every circle's size is its value, truly to scale — the shilling at the top really is that small. Figures are rough, in KSh (US$1 ≈ KSh 130). Wonder first, accounting later.</div>
+</div>
+<div id="tier"><div id="tier-name"></div><div id="tier-sub"></div></div>
+<div id="rail"><div id="rail-cap">KSh</div><div id="rail-track"><div id="rail-marker"></div></div></div>
+<div id="scalebar" class="sketch"><div id="sb-lab">= KSh …</div><div id="sb-bar"></div><div id="sb-mag"></div></div>
+<div id="tourcard" class="sketch">
+  <div class="tc-meta"><span id="tc-i"></span><span id="tc-val"></span></div><div id="tc-name"></div><div id="tc-note"></div>
+  <div id="tc-hint">click the card to skip ahead</div><button id="tc-stop" title="Stop the tour" aria-label="Stop the tour"><svg width="12" height="12" viewBox="0 0 12 12"><rect x="1.5" y="1.5" width="9" height="9" rx="1.5"/></svg></button>
+</div>
+<div id="toast"></div>
+<div id="intro" class="on"><div id="intro-card" class="sketch">
+  <svg class="coin" width="58" height="58" viewBox="0 0 58 58"><circle cx="29" cy="29" r="25" fill="none" stroke="#241e12" stroke-width="2.6"/><circle cx="29" cy="29" r="19" fill="none" stroke="#241e12" stroke-width="1.4" stroke-dasharray="3 4"/><text x="29" y="36" text-anchor="middle" font-family="Bricolage Grotesque, sans-serif" font-size="20" font-weight="800" fill="#241e12">1</text></svg>
+  <h2>SHILINGI <span>MOJA</span></h2>
+  <p>You are holding <b>one Kenyan shilling</b>. This chart runs from that coin all the way to <b>everything everyone owns on Earth</b> — and every circle is drawn at <b>true scale</b>. The shilling really is that small.</p>
+  <p>Scroll to zoom, drag to wander, or let the safari fly you through 17 powers of ten.</p>
+  <div class="btns"><button class="primary" id="iTour"><svg width="13" height="13" viewBox="0 0 24 24"><path d="M8 5.5l11 6.5-11 6.5z"/></svg>Anza safari — guided tour</button><button class="ghost" id="iSolo">Start at the coin</button></div>
+  <div class="fine">A homage to the internet's great zoomable money maps, remixed for Kenya. All figures approximate &amp; rounded (US$1 ≈ KSh 130). Not to be used for budgeting, borrowing, or bride price negotiations.</div>
+</div></div>
+<div id="grain"></div>
+<script>
+"use strict";
+const $=id=>document.getElementById(id);
+const clamp=(v,a,b)=>v<a?a:v>b?b:v;
+const SUPS="⁰¹²³⁴⁵⁶⁷⁸⁹";
+const sup=n=>String(n).split("").map(c=>SUPS[+c]).join("");
+const num=v=>{ const a=Math.abs(v); return (a>=1e-6||v===0||a>=1e6)? v.toFixed(4) : v.toFixed(20); };
+const UNITS=[[1e15,"quadrillion"],[1e12,"trillion"],[1e9,"billion"],[1e6,"million"]];
+function bigFmt(x){ for(const [u,n] of UNITS){ if(x>=u*0.99995){ const k=x/u; return (k>=100?Math.round(k):+k.toFixed(1))+" "+n; } } return Math.round(x).toLocaleString("en-US"); }
+function fmtKSh(v){ return v<1e6? "KSh "+Math.round(v).toLocaleString("en-US") : "KSh "+bigFmt(v); }
+function fmtUS(v){ const u=v/130; if(u<0.01) return "≈ "+Math.max(1,Math.round(u*100))+"¢"; if(u<1000) return "≈ US$"+(u<10?u.toFixed(2):Math.round(u).toLocaleString("en-US")); return "≈ US$"+bigFmt(u); }
+function fmtMag(m){ if(m<1e4) return "×"+Math.round(m).toLocaleString("en-US"); const e=Math.floor(Math.log10(m)); return "×"+(m/10**e).toFixed(1)+"×10"+sup(e); }
+const rnd=i=>{ const x=Math.sin(i*127.1+311.7)*43758.5453; return x-Math.floor(x); };
+const SVGNS="http://www.w3.org/2000/svg";
+function el(n,at){ const e=document.createElementNS(SVGNS,n); for(const k in at) e.setAttribute(k, typeof at[k]==="number"? num(at[k]) : at[k]); return e; }
+const D=[
+[1,"Shilingi moja — one shilling","The smallest sum Kenyans still stop to pick up. Everything below grew out of this.","p","coin"],
+[11,"M-Pesa fee, sending KSh 100","Cheaper than walking the money over yourself.","b"],
+[15,"Mfungo wa sukuma wiki","Yesterday KSh 10. Tomorrow? The market decides.","p"],
+[20,"Mayai — one egg","Sold singly at the duka, by the tray at the supermarket.","p"],
+[40,"Mahindi choma","Roadside roasted maize. Rain surcharge may apply.","p"],
+[50,"Chai na mandazi","The national breakfast engine.","p"],
+[60,"Matatu fare, short hop","The conductor doubles as DJ. Fare may change with the weather.","p"],
+[70,"Loaf of bread, 400g","A recurring character in the monthly price headlines.","p"],
+[100,"KSh 100 note","Fare, lunch and airtime — or the opening offer of a negotiation.","p","note"],
+[120,"1GB data bundle, 24 hours","What you are spending to read this on your phone.","b"],
+[190,"Unga wa sembe, 2kg","Maize flour: the country's political thermometer.","p"],
+[200,"KSh 200 note","The workhorse of Saturday errands.","p","note"],
+[250,"Tusker, 500ml","Brewed in Ruaraka since 1923. Bar prices vary by mood.","b"],
+[300,"Gikomba 'deal of the day'","Second-hand shoes. Haggling included at no extra charge.","p"],
+[430,"Nairobi National Park, citizen ticket","Lions, with a skyline for a backdrop.","s"],
+[500,"Electricity tokens, typical top-up","The happy beep of a meter coming back to life.","p"],
+[500,"KSh 500 note","The note you break at the supermarket and can't account for by evening.","p","note"],
+[1000,"KSh 1,000 note","The whole family of notes lives on this row. At this scale, coins are a rumour.","p","note"],
+[1200,"A boda boda rider's good day","After fuel, fines and the day's unruly arithmetic.","b"],
+[3000,"Monthly matatu commute","Two trips a day, 25 days, one long-suffering wallet.","p"],
+[3500,"SGR Nairobi–Mombasa, economy","Four and a half hours past Tsavo. Elephants not guaranteed.","s"],
+[6500,"New tyre for the Probox","An investment in remaining on the road at all.","p"],
+[8000,"Entry-level smartphone","The bank branch most Kenyans actually visit every day.","b"],
+[9400,"Full tank, 50 litres","At the pump's ≈ KSh 189 a litre. Sigh in chorus.","p"],
+[12000,"Bedsitter rent, Nairobi outskirts","'Water included' is a rumour the landlord has heard of.","p"],
+[15200,"Minimum wage, general labourer (monthly)","Set by gazette notice, survived by hustle.","s"],
+[35000,"Starting teacher's salary (monthly)","Roughly what the TSC offers a new classroom hero.","s"],
+[45000,"3-day Maasai Mara safari, mid-range","Per person. The wildebeest don't charge extra.","b"],
+[60000,"One year, private primary school","See you at the fees-reminder SMS.","p"],
+[80000,"Average formal-sector wage (monthly)","The statistical mean — most earners will tell you it's above average.","s"],
+[90000,"Return flight, Nairobi–London","The cheapest seat to the former capital of the Empire.","b"],
+[120000,"High-yield dairy cow","The rural fixed deposit: gives milk, not dividends.","p"],
+[150000,"New boda boda (Boxer / Bajaj)","One Prado, three rows down, is worth about 87 of these.","b"],
+[600000,"Wedding, 200 guests, modest","Two goats, one marquee, endless committee meetings.","p"],
+[850000,"Used Toyota Probox","Kenya's true national vehicle. Expectations sold separately.","b"],
+[950000,"One acre, Kitale","Maize country. The price doubles the moment tarmac is promised.","p"],
+[1300000,"Imported 2015 Demio, landed","Duty, CFS charges and hope, all included.","b"],
+[2200000,"50×100 plot, Kitengela","Beacon certificate pending. Always pending.","p"],
+[3000000,"Used 14-seater matatu","A small business with its own graffiti culture.","b"],
+[8000000,"One acre, Kiambu","Same soil as Kitale. Different proximity to Nairobi.","p"],
+[9000000,"2-bed apartment, Kilimani","Gym, pool, and a lift that works most months.","p"],
+[13000000,"New Toyota Land Cruiser Prado","About 87 new boda bodas. Guess which one the bank finances.","b"],
+[26000000,"13 years of international school","Per child. Two children? Bring two circles.","p"],
+[55000000,"Second-hand Robinson R44 helicopter","Campaign-season discount not publicly advertised.","b"],
+[85000000,"Five-bedroom house, Karen","Named for a coffee farm. Now comes with colobus monkeys.","p"],
+[170000000,"Safaricom's profit, per day","About KSh 2,000 every second, all night, while you sleep.","b"],
+[250000000,"One kilometre of new highway","Before the inevitable cost revisions.","s"],
+[356000000,"M-Pesa's revenue, per day","Assembled ten shillings at a time.","b"],
+[1000000000,"One kilometre of SGR","On a good day, with no one renegotiating.","s"],
+[3300000000,"One kilometre of Nairobi Expressway","KSh 88 billion for 27 km of flying over traffic you still sit in.","s"],
+[7000000000,"Imports landing at Mombasa, per day","Roughly one ship's worth, every sunrise.","b"],
+[20000000000,"Kenyatta National Hospital, one year","1,800 beds and the country's longest queues.","s"],
+[30000000000,"Mitumba imports, one year","Birmingham's wardrobe, delivered to Gikomba's runway.","b"],
+[35000000000,"Coffee exports, one year","Grown here, drunk mostly elsewhere.","b"],
+[38000000000,"Kenya Airways' worst annual loss","The Pride of Africa, aloft on optimism.","b"],
+[44000000000,"Nairobi County's annual budget","One city, one budget, potholes priced in.","s"],
+[63000000000,"Lamu Port, first three berths","Built big. Waiting patiently for the ships.","s"],
+[180000000000,"Tea exports, one year","The world's largest exporter of black tea, cup by cup.","b"],
+[320000000000,"Safaricom's annual revenue","Most of it answers to the name M-Pesa.","b"],
+[370000000000,"Tourism earnings, one year","Wildebeest, beaches and conference delegates.","b"],
+[480000000000,"All Kenyan cash outside banks","In pockets, mattresses and the envelope in your mother's cupboard.","s"],
+[600000000000,"Diaspora remittances, one year","Kenya's steadiest export: its people, wiring love home.","b"],
+[1050000000000,"National forex reserves","About four months of imports, saved for a rainy day. It drizzles often.","s"],
+[2200000000000,"KRA tax collection, one year","Gathered shilling by shilling, argued over line by line.","s"],
+[3900000000000,"National budget, 2024/25","Read aloud every June, amended by October.","s"],
+[6000000000000,"Everyone's bank deposits, combined","All of Kenya's savings, stacked in a single circle.","s"],
+[10600000000000,"The national public debt","About 70% of everything Kenya produces in a year.","s"],
+[15100000000000,"Kenya's GDP — one whole year","Every mango, matatu ride, M-Pesa tap and payslip, added up.","s"],
+[35000000000000,"Value moved through M-Pesa, one year","More than twice Kenya's yearly GDP, tapped phone to phone.","b"],
+[52000000000000,"The world's richest person","One individual, worth about three and a half Kenyan economies.","w"],
+[260000000000000,"Sub-Saharan Africa's GDP, one year","What 1.2 billion people produce between the Sahara and the Cape.","w"],
+[360000000000000,"Africa's GDP, one year","The youngest continent, still writing its invoice.","w"],
+[880000000000000,"United States federal budget, one year","Almost sixty Kenyan economies, one government.","w"],
+[1100000000000000,"Every banknote & coin on Earth","Physical cash is the tip. The rest is numbers.","w"],
+[2400000000000000,"All the gold ever mined","Every ring, vault and chain, at today's price.","w"]
+];
+const svg=$("chart"), gmain=$("gmain"), labelsBox=$("labels");
+const N=D.length; const LOG=D.map(d=>Math.log10(d[0])); const maxL=LOG[N-1], minL=LOG[0];
+const BASE_R=30, SPACING=150, ZMIN=0.12, ZMAX=26, FADE=2.35, JITTER=64; const FOCUS_Z=140/BASE_R;
+let centerL=0, zoom=1; let W=innerWidth, H=innerHeight; addEventListener("resize",()=>{ W=innerWidth; H=innerHeight; render(); });
+const manualNotes=new Set(); const shapes=[], labels=[];
+D.forEach((d,i)=>{
+  const [val,name,note,cat,kind]=d; const strokeColor=cat==="b"?"var(--green)":cat==="s"?"var(--red)":cat==="w"?"var(--ochre)":"var(--ink)";
+  let shape; if(kind==="note"){ shape=el("rect",{rx:4,ry:4}); shape._rect=true; } else { shape=el("circle",{}); shape._rect=false; }
+  shape.setAttribute("fill","rgba(250,245,231,.82)"); shape.setAttribute("stroke",strokeColor); shape.setAttribute("stroke-width","1.6"); shape.style.transition="opacity .15s linear"; gmain.appendChild(shape);
+  if(kind==="coin"){ const ring=el("circle",{fill:"none",stroke:"var(--ink)","stroke-width":"1"}); ring.setAttribute("stroke-dasharray","3 4"); ring.style.transition="opacity .15s linear"; gmain.appendChild(ring); shape._ring=ring; }
+  shapes.push(shape);
+  const lb=document.createElement("div"); lb.className="lb"+(cat!=="p" ? " c-"+cat : ""); lb.innerHTML='<div class="lb-name">'+name+'</div><div class="lb-val"></div><div class="lb-note">'+note+'</div>';
+  lb.addEventListener("click",e=>{ e.stopPropagation(); if(manualNotes.has(i)) manualNotes.delete(i); else manualNotes.add(i); render(); });
+  labelsBox.appendChild(lb); labels.push(lb);
+});
+function screenFor(i){ const dl=LOG[i]-centerL; const r=zoom*BASE_R*Math.pow(10,dl/2); const y=H/2+zoom*SPACING*dl; const x=W/2+(rnd(i)-0.5)*JITTER; const op=clamp(1-Math.abs(dl)/FADE,0,1); return {r,x,y,op,dl}; }
+function render(){
+  let closest=0, closestD=Infinity; for(let i=0;i<N;i++){ const s=screenFor(i); if(Math.abs(s.dl)<closestD){ closestD=Math.abs(s.dl); closest=i; } }
+  for(let i=0;i<N;i++){
+    const s=screenFor(i), shape=shapes[i], lb=labels[i];
+    if(s.op<0.01){ shape.setAttribute("opacity","0"); if(shape._ring) shape._ring.setAttribute("opacity","0"); lb.style.opacity="0"; continue; }
+    shape.setAttribute("opacity",num(s.op));
+    if(shape._rect){ const AR=2.1, rh=s.r*Math.sqrt(Math.PI/AR), rw=AR*rh; shape.setAttribute("x",num(s.x-rw/2)); shape.setAttribute("y",num(s.y-rh/2)); shape.setAttribute("width",num(Math.max(rw,0.3))); shape.setAttribute("height",num(Math.max(rh,0.3))); }
+    else { shape.setAttribute("cx",num(s.x)); shape.setAttribute("cy",num(s.y)); shape.setAttribute("r",num(Math.max(s.r,0.4))); if(shape._ring){ shape._ring.setAttribute("cx",num(s.x)); shape._ring.setAttribute("cy",num(s.y)); shape._ring.setAttribute("r",num(Math.max(s.r*0.72,0.3))); shape._ring.setAttribute("opacity",num(s.op)); } }
+    lb.style.opacity=num(s.op); const lx=Math.min(s.x+s.r+9,W-250); lb.style.transform="translate("+num(lx)+"px, "+num(s.y)+"px) translateY(-50%)"; lb.querySelector(".lb-val").textContent=fmtKSh(D[i][0])+"  ·  "+fmtUS(D[i][0]); lb.classList.toggle("shownote",i===closest||manualNotes.has(i));
+  }
+  updateTier(); updateRail(); updateScaleBar();
+}
+const TIERS=[[0,2,"SENTI NA SHILINGI","coins & small change"],[2,4,"MAISHA YA KILA SIKU","everyday Kenya"],[4,6.3,"MANUNUZI MAKUBWA","big-ticket purchases"],[6.3,9,"BIASHARA","business & infrastructure"],[9,12,"KITAIFA","national scale"],[12,Infinity,"DUNIANI","beyond Kenya"]];
+function updateTier(){ let t=TIERS[TIERS.length-1]; for(const row of TIERS){ if(centerL>=row[0]&&centerL<row[1]){t=row;break;} } if($("tier-name").textContent!==t[2]){ $("tier-name").textContent=t[2]; $("tier-sub").textContent=t[3]; } }
+const railTrack=$("rail-track"); let ticksBuilt=false;
+function buildTicks(){ const h=railTrack.clientHeight||400; [0,3,6,9,12,15].forEach(tl=>{ if(tl>maxL+0.3)return; const t=document.createElement("div"); t.className="tick"; t.style.top=(tl/maxL*h)+"px"; t.textContent=tl===0?"1":"10"+sup(tl); railTrack.appendChild(t); }); ticksBuilt=true; }
+function updateRail(){ if(!ticksBuilt)buildTicks(); const h=railTrack.clientHeight||400; $("rail-marker").style.top=(clamp(centerL/maxL,0,1)*h)+"px"; }
+function updateScaleBar(){ const barPx=70; const l=centerL+2*Math.log10(barPx/(zoom*BASE_R)); const v=Math.pow(10,l); $("sb-lab").textContent="≈ "+fmtKSh(v); $("sb-mag").textContent=fmtUS(v); }
+let toastTimer=null; function toast(msg){ const t=$("toast"); t.textContent=msg; t.classList.add("on"); clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove("on"),2200); }
+let animRAF=null;
+function animateTo(targetL,targetZ,dur,cb){ dur=dur||650; if(animRAF)cancelAnimationFrame(animRAF); const startL=centerL,startZ=zoom,t0=performance.now(),lz0=Math.log(startZ),lz1=Math.log(targetZ); function step(t){ const p=clamp((t-t0)/dur,0,1); const e=p<0.5?4*p*p*p:1-Math.pow(-2*p+2,3)/2; centerL=startL+(targetL-startL)*e; zoom=Math.exp(lz0+(lz1-lz0)*e); render(); if(p<1)animRAF=requestAnimationFrame(step); else {animRAF=null;if(cb)cb();} } animRAF=requestAnimationFrame(step); }
+let tourActive=false,tourIdx=0,tourTimer=null;
+function startTour(){ tourActive=true;tourIdx=0;$("tourcard").classList.add("on");playTourStep(); }
+function playTourStep(){ if(!tourActive)return; if(tourIdx>=N){stopTour();return;} const d=D[tourIdx]; $("tc-i").textContent=(tourIdx+1)+" / "+N; $("tc-val").textContent=fmtKSh(d[0])+" · "+fmtUS(d[0]); $("tc-name").textContent=d[1]; $("tc-note").textContent=d[2]; animateTo(LOG[tourIdx],FOCUS_Z,900); clearTimeout(tourTimer); tourTimer=setTimeout(()=>{tourIdx++;playTourStep();},3300); }
+function stopTour(){ tourActive=false; clearTimeout(tourTimer); $("tourcard").classList.remove("on"); }
+$("tc-stop").addEventListener("click",e=>{e.stopPropagation();stopTour();}); $("tourcard").addEventListener("click",()=>{if(!tourActive)return;clearTimeout(tourTimer);tourIdx++;playTourStep();});
+let dragging=false,dragY0=0,dragCenter0=0;
+svg.addEventListener("pointerdown",e=>{dragging=true;dragY0=e.clientY;dragCenter0=centerL;if(svg.setPointerCapture)svg.setPointerCapture(e.pointerId);});
+svg.addEventListener("pointermove",e=>{if(!dragging)return;const dy=e.clientY-dragY0;centerL=clamp(dragCenter0-dy/(zoom*SPACING),minL-1,maxL+1);render();});
+function endDrag(){dragging=false;} svg.addEventListener("pointerup",endDrag); svg.addEventListener("pointercancel",endDrag);
+svg.addEventListener("wheel",e=>{e.preventDefault();zoom=clamp(zoom*Math.pow(1.0018,-e.deltaY),ZMIN,ZMAX);render();},{passive:false});
+svg.addEventListener("dblclick",e=>{let best=0,bestD=Infinity;for(let i=0;i<N;i++){const s=screenFor(i);if(s.op<0.03)continue;const d=Math.hypot(s.x-e.clientX,s.y-e.clientY);if(d<bestD){bestD=d;best=i;}}animateTo(LOG[best],FOCUS_Z);toast("Diving to "+D[best][1]);});
+$("bIn").addEventListener("click",()=>animateTo(centerL,clamp(zoom*2,ZMIN,ZMAX),420)); $("bOut").addEventListener("click",()=>animateTo(centerL,clamp(zoom/2,ZMIN,ZMAX),420)); $("bHome").addEventListener("click",()=>{stopTour();animateTo(0,1,700);}); $("bTour").addEventListener("click",startTour);
+function railJump(e){const rect=railTrack.getBoundingClientRect(),h=rect.height||railTrack.clientHeight||400,p=clamp((e.clientY-rect.top)/h,0,1);animateTo(p*maxL,zoom,500);}
+railTrack.addEventListener("pointerdown",e=>{railJump(e);railTrack._drag=true;if(railTrack.setPointerCapture)railTrack.setPointerCapture(e.pointerId);}); railTrack.addEventListener("pointermove",e=>{if(railTrack._drag)railJump(e);}); railTrack.addEventListener("pointerup",()=>{railTrack._drag=false;}); railTrack.addEventListener("pointercancel",()=>{railTrack._drag=false;});
+$("iSolo").addEventListener("click",()=>$("intro").classList.remove("on")); $("iTour").addEventListener("click",()=>{$("intro").classList.remove("on");startTour();});
+render();
+</script>
+</body>
+</html>
